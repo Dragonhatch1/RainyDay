@@ -1,0 +1,17 @@
+{
+  "heavy_thunder": {
+    "category": "weather",
+    "sounds": [
+      "thunder/rumble1",
+      "thunder/rumble2",
+      "thunder/rumble3",
+      "thunder/rumble4",
+      "thunder/rumble5",
+      "thunder/rumble6",
+      "thunder/rumble7",
+      "thunder/rumble8",
+      "thunder/rumble9",
+      "thunder/rumble10"
+    ]
+  }
+}
