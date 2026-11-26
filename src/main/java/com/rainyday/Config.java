@@ -31,12 +31,43 @@ public class Config {
         0.5f,
         0.7f);
 
-    // name, rain min/max, thunder min/max, minutes min/max, weight, sound
+    // name, rain min/max, thunder min/max, minutes min/max, weight, ambient sound, rain splash sound
+    // Rain splash sounds: event to play instead of vanilla rain, volume multiplier, share of splash sounds kept.
     private static final RainProfile[] DEFAULTS = {
-        new RainProfile("drizzle", 0.3f, 0.5f, 0.0f, 0.0f, 10f, 30f, 3, null),
-        new RainProfile("steady", 0.8f, 1.0f, 0.0f, 0.1f, 10f, 40f, 4, null),
-        new RainProfile("heavy", 1.0f, 1.0f, 0.5f, 0.7f, 5f, 15f, 2, DISTANT_THUNDER),
-        new RainProfile("storm", 1.0f, 1.0f, 1.0f, 1.0f, 3f, 13f, 1, DISTANT_THUNDER), };
+        new RainProfile(
+            "drizzle",
+            0.3f,
+            0.5f,
+            0.0f,
+            0.0f,
+            10f,
+            30f,
+            3,
+            null,
+            new RainSound("rainyday:rain.drizzle", 0.8f, 0.6f)),
+        new RainProfile("steady", 0.8f, 1.0f, 0.0f, 0.1f, 10f, 40f, 4, null, RainSound.VANILLA),
+        new RainProfile(
+            "heavy",
+            1.0f,
+            1.0f,
+            0.5f,
+            0.7f,
+            5f,
+            15f,
+            2,
+            DISTANT_THUNDER,
+            new RainSound("rainyday:rain.heavy", 1.2f, 1.0f)),
+        new RainProfile(
+            "storm",
+            1.0f,
+            1.0f,
+            1.0f,
+            1.0f,
+            3f,
+            13f,
+            1,
+            DISTANT_THUNDER,
+            new RainSound("rainyday:rain.storm", 1.3f, 1.0f)), };
 
     public static void load(File file) {
         Configuration cfg = new Configuration(file);
@@ -109,8 +140,18 @@ public class Config {
                 10000,
                 "How likely this profile is to be picked, relative to the others. 0 = never.");
 
-            profiles
-                .add(new RainProfile(name, rainMin, rainMax, thMin, thMax, min, max, weight, loadSound(cfg, cat, d)));
+            profiles.add(
+                new RainProfile(
+                    name,
+                    rainMin,
+                    rainMax,
+                    thMin,
+                    thMax,
+                    min,
+                    max,
+                    weight,
+                    loadSound(cfg, cat, d),
+                    loadRainSound(cfg, cat, d)));
         }
 
         int total = 0;
@@ -118,7 +159,7 @@ public class Config {
         if (total <= 0) {
             RainyDay.LOG.warn("No rain profiles with weight above 0; using plain steady rain.");
             profiles.clear();
-            profiles.add(new RainProfile("steady", 1f, 1f, 0f, 0f, 10f, 40f, 1, null));
+            profiles.add(new RainProfile("steady", 1f, 1f, 0f, 0f, 10f, 40f, 1, null, RainSound.VANILLA));
         }
 
         if (cfg.hasChanged()) cfg.save();
@@ -159,6 +200,33 @@ public class Config {
         return new AmbientSound(event, minSec, maxSec, volume, pitchMin, pitchMax);
     }
 
+    private static RainSound loadRainSound(Configuration cfg, String cat, RainProfile d) {
+        RainSound r = d.rainSound;
+        String sound = cfg.getString(
+            "rainSound",
+            cat,
+            r.sound,
+            "Plays instead of vanilla's rain splash sound during this profile, for players who have RainyDay "
+                + "installed (others hear normal rain). Empty = vanilla rain. e.g. rainyday:rain.heavy. "
+                + "If the sound isn't defined in any sounds.json, players hear vanilla rain.");
+        float volume = cfg.getFloat(
+            "rainSoundVolume",
+            cat,
+            r.volume,
+            0f,
+            5f,
+            "Multiplies the rain splash volume (vanilla plays it at 0.2, or 0.1 under a roof). 1 = unchanged.");
+        float chance = cfg.getFloat(
+            "rainSoundChance",
+            cat,
+            r.chance,
+            0f,
+            1f,
+            "Share of rain splash sounds that play, 0-1. Vanilla plays about 7 a second; 0.5 = about half as many, "
+                + "for a lighter, sparser sound. 0 = silent rain.");
+        return new RainSound(sound, volume, chance);
+    }
+
     /** Reads and removes a key left over from an older config version. Returns fallback if absent. */
     private static float takeOldValue(Configuration cfg, String cat, String key, float fallback) {
         ConfigCategory category = cfg.getCategory(cat);
@@ -171,7 +239,7 @@ public class Config {
 
     private static RainProfile defaultFor(String name) {
         for (RainProfile p : DEFAULTS) if (p.name.equals(name)) return p;
-        return new RainProfile(name, 1.0f, 1.0f, 0.0f, 0.0f, 10f, 30f, 1, null);
+        return new RainProfile(name, 1.0f, 1.0f, 0.0f, 0.0f, 10f, 30f, 1, null, RainSound.VANILLA);
     }
 
     public static RainProfile byName(String name) {

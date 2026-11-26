@@ -3,7 +3,7 @@
 	"modList": [{
 		"modid": "${modId}",
 		"name": "${modName}",
-		"description": "It always rains. The weather randomly switches between configurable rain profiles: drizzle, steady rain, heavy rain and thunderstorms. Runs on the server; players only need it (or the RainyDay sounds resource pack) to hear its custom thunder sounds.",
+		"description": "It always rains. The weather randomly switches between configurable rain profiles: drizzle, steady rain, heavy rain and thunderstorms. Runs on the server; players who also install it hear each profile's own rain sound.",
 		"version": "${modVersion}",
 		"mcversion": "${minecraftVersion}",
 		"url": "",

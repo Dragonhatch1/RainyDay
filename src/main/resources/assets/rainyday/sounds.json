@@ -1,0 +1,29 @@
+{
+  "rain.drizzle": {
+    "category": "weather",
+    "sounds": [
+      "rain/drizzle1",
+      "rain/drizzle2",
+      "rain/drizzle3"
+    ]
+  },
+  "rain.heavy": {
+    "category": "weather",
+    "sounds": [
+    ]
+  },
+  "rain.storm": {
+    "category": "weather",
+    "sounds": [
+      "rain/storm1",
+      "rain/storm2"
+    ]
+  },
+  "rain.steady": {
+    "category": "weather",
+    "sounds": [
+      "rain/steady1",
+      "rain/steady2"
+    ]
+  }
+}

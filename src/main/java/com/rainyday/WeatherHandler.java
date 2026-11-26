@@ -63,6 +63,7 @@ public class WeatherHandler {
         state.thunder = profile.rollThunder(rand);
         state.ticksLeft = profile.rollDurationTicks(rand);
         sounds.reset();
+        Network.sendProfileToDimension(world.provider.dimensionId, profile); // per-profile rain sounds
 
         if (Config.debug) {
             RainyDay.LOG.info(
@@ -93,7 +94,7 @@ public class WeatherHandler {
         return Config.profiles.get(0);
     }
 
-    private static WeatherState getState(World world) {
+    static WeatherState getState(World world) {
         WeatherState state = (WeatherState) world.perWorldStorage.loadData(WeatherState.class, WeatherState.NAME);
         if (state == null) {
             state = new WeatherState(WeatherState.NAME);
