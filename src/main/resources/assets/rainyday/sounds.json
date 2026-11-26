@@ -10,6 +10,8 @@
   "rain.heavy": {
     "category": "weather",
     "sounds": [
+      "rain/heavy1",
+      "rain/heavy2"
     ]
   },
   "rain.storm": {
