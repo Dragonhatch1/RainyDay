@@ -36,7 +36,8 @@ public final class Network {
         }
         // If the profile isn't known yet (world's first tick), the broadcast when it starts covers this player.
         CHANNEL.sendTo(
-            profile == null ? new ProfileMessage("", RainSound.VANILLA) : new ProfileMessage(profile.name, profile.rainSound),
+            profile == null ? new ProfileMessage("", RainSound.VANILLA)
+                : new ProfileMessage(profile.name, profile.rainSound),
             player);
     }
 

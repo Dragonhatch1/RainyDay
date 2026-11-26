@@ -44,8 +44,16 @@ public class Config {
             40f,
             3,
             null,
-            new RainSound("rainyday:rain.drizzle", 0.8f, 0.6f)),
-        new RainProfile("steady", 0.8f, 1.0f, 0.0f, 0.1f, 15f, 40f, 4,
+            new RainSound("rainyday:rain.drizzle", 1.0f, 0.6f)),
+        new RainProfile(
+            "steady",
+            0.8f,
+            1.0f,
+            0.0f,
+            0.1f,
+            15f,
+            40f,
+            4,
             DISTANT_THUNDER,
             new RainSound("rainyday:rain.steady", 1.0f, 0.8f)),
         new RainProfile(
