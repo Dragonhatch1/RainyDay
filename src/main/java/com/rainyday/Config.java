@@ -40,20 +40,22 @@ public class Config {
             0.5f,
             0.0f,
             0.0f,
-            10f,
-            30f,
+            15f,
+            40f,
             3,
             null,
             new RainSound("rainyday:rain.drizzle", 0.8f, 0.6f)),
-        new RainProfile("steady", 0.8f, 1.0f, 0.0f, 0.1f, 10f, 40f, 4, null, RainSound.VANILLA),
+        new RainProfile("steady", 0.8f, 1.0f, 0.0f, 0.1f, 15f, 40f, 4,
+            DISTANT_THUNDER,
+            new RainSound("rainyday:rain.steady", 1.0f, 0.8f)),
         new RainProfile(
             "heavy",
             1.0f,
             1.0f,
             0.5f,
             0.7f,
-            5f,
             15f,
+            40f,
             2,
             DISTANT_THUNDER,
             new RainSound("rainyday:rain.heavy", 1.2f, 1.0f)),
@@ -63,11 +65,11 @@ public class Config {
             1.0f,
             1.0f,
             1.0f,
-            3f,
-            13f,
+            5f,
+            15f,
             1,
             DISTANT_THUNDER,
-            new RainSound("rainyday:rain.storm", 1.3f, 1.0f)), };
+            new RainSound("rainyday:rain.storm", 1.4f, 1.0f)), };
 
     public static void load(File file) {
         Configuration cfg = new Configuration(file);
