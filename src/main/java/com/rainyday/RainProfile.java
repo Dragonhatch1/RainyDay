@@ -16,15 +16,13 @@ public class RainProfile {
     /** Thunder strength range, 0-1. Darkens the sky. Lightning only when rain x thunder is above 0.9. */
     public final float thunderMin, thunderMax;
     public final float minMinutes, maxMinutes;
-    /** Relative chance of being picked. 0 disables the profile. */
-    public final int weight;
     /** Optional sound played near each player every so often while this profile is active. Null = none. */
     public final AmbientSound sound;
     /** How vanilla's rain splash sound changes during this profile, for players who have RainyDay installed. */
     public final RainSound rainSound;
 
     public RainProfile(String name, float rainMin, float rainMax, float thunderMin, float thunderMax, float minMinutes,
-        float maxMinutes, int weight, AmbientSound sound, RainSound rainSound) {
+        float maxMinutes, AmbientSound sound, RainSound rainSound) {
         this.name = name;
         this.rainMin = Math.min(rainMin, rainMax);
         this.rainMax = Math.max(rainMin, rainMax);
@@ -32,7 +30,6 @@ public class RainProfile {
         this.thunderMax = Math.max(thunderMin, thunderMax);
         this.minMinutes = Math.min(minMinutes, maxMinutes);
         this.maxMinutes = Math.max(minMinutes, maxMinutes);
-        this.weight = weight;
         this.sound = sound;
         this.rainSound = rainSound == null ? RainSound.VANILLA : rainSound;
     }
@@ -58,7 +55,7 @@ public class RainProfile {
     @Override
     public String toString() {
         return String.format(
-            "%s (rain %.2f-%.2f, thunder %.2f-%.2f, %.1f-%.1f min, weight %d, sound: %s, rain sound: %s)",
+            "%s (rain %.2f-%.2f, thunder %.2f-%.2f, %.1f-%.1f min, sound: %s, rain sound: %s)",
             name,
             rainMin,
             rainMax,
@@ -66,7 +63,6 @@ public class RainProfile {
             thunderMax,
             minMinutes,
             maxMinutes,
-            weight,
             sound == null ? "none" : sound,
             rainSound);
     }

@@ -20,7 +20,15 @@ public class Config {
     /** Ambient sounds are multiplied by this when the player is under a roof. */
     public static float indoorSoundVolume = 0.4f;
 
+    /** In chain order: the order of the 'profiles' list. */
     public static List<RainProfile> profiles = new ArrayList<>();
+
+    /**
+     * Weather chain: when a profile ends, the chance to go back one, stay (a fresh roll of the same profile) or
+     * go forward one. The first profile can't go back (its share goes forward); the last one wraps forward to
+     * the first. Normalised to add up to 1.
+     */
+    public static float chanceBack = 0.20f, chanceStay = 0.35f, chanceForward = 0.45f;
 
     /** Distant thunder: vanilla's thunder sound, quieter and deeper than a real strike. */
     private static final AmbientSound DISTANT_THUNDER = new AmbientSound(
@@ -31,7 +39,8 @@ public class Config {
         0.5f,
         0.7f);
 
-    // name, rain min/max, thunder min/max, minutes min/max, weight, ambient sound, rain splash sound
+    // name, rain min/max, thunder min/max, minutes min/max, ambient sound, rain splash sound
+    // The order here is the default order of the weather chain: drizzle -> steady -> heavy -> storm.
     // Rain splash sounds: event to play instead of vanilla rain, volume multiplier, share of splash sounds kept.
     private static final RainProfile[] DEFAULTS = {
         new RainProfile(
@@ -42,7 +51,6 @@ public class Config {
             0.0f,
             15f,
             40f,
-            3,
             null,
             new RainSound("rainyday:rain.drizzle", 1.0f, 0.8f)),
         new RainProfile(
@@ -53,7 +61,6 @@ public class Config {
             0.3f,
             15f,
             40f,
-            4,
             DISTANT_THUNDER,
             new RainSound("rainyday:rain.steady", 1.0f, 0.8f)),
         new RainProfile(
@@ -64,7 +71,6 @@ public class Config {
             0.7f,
             15f,
             40f,
-            2,
             DISTANT_THUNDER,
             new RainSound("rainyday:rain.heavy", 1.2f, 1.0f)),
         new RainProfile(
@@ -75,7 +81,6 @@ public class Config {
             1.0f,
             5f,
             15f,
-            1,
             DISTANT_THUNDER,
             new RainSound("rainyday:rain.storm", 1.4f, 1.0f)), };
 
@@ -83,8 +88,44 @@ public class Config {
         Configuration cfg = new Configuration(file);
         cfg.addCustomCategoryComment(
             "general",
-            "RainyDay keeps it raining and randomly switches between the rain profiles listed below.\n"
+            "RainyDay keeps it raining and moves through the rain profiles listed below as a chain, in the order of\n"
+                + "'profiles'. When a profile ends it stays, goes back one or goes forward one (see the chance settings).\n"
                 + "To add a profile, add its name to 'profiles' and restart: a section for it is created here.");
+
+        chanceBack = cfg.getFloat(
+            "chanceBack",
+            "general",
+            chanceBack,
+            0f,
+            1f,
+            "When a profile ends: chance to go back to the previous profile in the chain. "
+                + "The first profile can't go back; this share goes to 'forward' instead.");
+        chanceStay = cfg.getFloat(
+            "chanceStay",
+            "general",
+            chanceStay,
+            0f,
+            1f,
+            "When a profile ends: chance to stay on it (a fresh roll of strengths and duration).");
+        chanceForward = cfg.getFloat(
+            "chanceForward",
+            "general",
+            chanceForward,
+            0f,
+            1f,
+            "When a profile ends: chance to go forward to the next profile. The last profile wraps to the first. "
+                + "The three chances are scaled to add up to 1 if they don't already.");
+        float sum = chanceBack + chanceStay + chanceForward;
+        if (sum <= 0f) {
+            RainyDay.LOG.warn("chanceBack + chanceStay + chanceForward is 0; profiles will always stay.");
+            chanceBack = 0f;
+            chanceStay = 1f;
+            chanceForward = 0f;
+        } else {
+            chanceBack /= sum;
+            chanceStay /= sum;
+            chanceForward /= sum;
+        }
 
         debug = cfg.getBoolean(
             "debug",
@@ -113,7 +154,13 @@ public class Config {
 
         String[] defaultNames = new String[DEFAULTS.length];
         for (int i = 0; i < DEFAULTS.length; i++) defaultNames[i] = DEFAULTS[i].name;
-        String[] names = cfg.get("general", "profiles", defaultNames, "Names of the rain profiles to use.")
+        String[] names = cfg
+            .get(
+                "general",
+                "profiles",
+                defaultNames,
+                "Names of the rain profiles to use, in chain order. The first can't go back; the last wraps forward "
+                    + "to the first. A new world starts at the first.")
             .getStringList();
 
         profiles.clear();
@@ -142,13 +189,12 @@ public class Config {
             float thMax = cfg.getFloat("thunderMax", cat, thDefMax, 0f, 1f, "Highest thunder strength.");
             float min = cfg.getFloat("minMinutes", cat, d.minMinutes, 0.05f, 100000f, "Shortest this profile lasts.");
             float max = cfg.getFloat("maxMinutes", cat, d.maxMinutes, 0.05f, 100000f, "Longest this profile lasts.");
-            int weight = cfg.getInt(
-                "weight",
-                cat,
-                d.weight,
-                0,
-                10000,
-                "How likely this profile is to be picked, relative to the others. 0 = never.");
+            // 'weight' is no longer used (the chain replaced weighted random picks): drop it from old configs.
+            if (cfg.getCategory(cat)
+                .containsKey("weight")) {
+                cfg.getCategory(cat)
+                    .remove("weight");
+            }
 
             profiles.add(
                 new RainProfile(
@@ -159,17 +205,13 @@ public class Config {
                     thMax,
                     min,
                     max,
-                    weight,
                     loadSound(cfg, cat, d),
                     loadRainSound(cfg, cat, d)));
         }
 
-        int total = 0;
-        for (RainProfile p : profiles) total += p.weight;
-        if (total <= 0) {
-            RainyDay.LOG.warn("No rain profiles with weight above 0; using plain steady rain.");
-            profiles.clear();
-            profiles.add(new RainProfile("steady", 1f, 1f, 0f, 0f, 10f, 40f, 1, null, RainSound.VANILLA));
+        if (profiles.isEmpty()) {
+            RainyDay.LOG.warn("No rain profiles listed; using plain steady rain.");
+            profiles.add(new RainProfile("steady", 1f, 1f, 0f, 0f, 10f, 40f, null, RainSound.VANILLA));
         }
 
         if (cfg.hasChanged()) cfg.save();
@@ -249,7 +291,7 @@ public class Config {
 
     private static RainProfile defaultFor(String name) {
         for (RainProfile p : DEFAULTS) if (p.name.equals(name)) return p;
-        return new RainProfile(name, 1.0f, 1.0f, 0.0f, 0.0f, 10f, 30f, 1, null, RainSound.VANILLA);
+        return new RainProfile(name, 1.0f, 1.0f, 0.0f, 0.0f, 10f, 30f, null, RainSound.VANILLA);
     }
 
     public static RainProfile byName(String name) {
