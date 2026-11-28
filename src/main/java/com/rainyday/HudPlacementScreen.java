@@ -47,7 +47,12 @@ public class HudPlacementScreen extends GuiScreen {
 
         int cx = width / 2, ty = height / 2 - 30;
         drawCenteredString(fontRendererObj, "RainyDay weather icon", cx, ty, 0xFFFFFF);
-        drawCenteredString(fontRendererObj, "Drag the icon to move it. Mouse wheel or +/- to resize.", cx, ty + 12, 0xAAAAAA);
+        drawCenteredString(
+            fontRendererObj,
+            "Drag the icon to move it. Mouse wheel or +/- to resize.",
+            cx,
+            ty + 12,
+            0xAAAAAA);
         drawCenteredString(
             fontRendererObj,
             String.format(

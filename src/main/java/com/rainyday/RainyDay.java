@@ -1,9 +1,6 @@
 package com.rainyday;
 
 import net.minecraft.block.Block;
-import net.minecraft.init.Blocks;
-import net.minecraft.init.Items;
-import net.minecraft.item.ItemStack;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,6 +9,7 @@ import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 
@@ -22,7 +20,12 @@ import cpw.mods.fml.common.registry.GameRegistry;
  * The weather runs on the server and is synced to players by vanilla. Because RainyDay adds a block (the Weather
  * TV), players need it installed to join, so Forge's default "same mod on both sides" check applies.
  */
-@Mod(modid = RainyDay.MODID, name = "RainyDay", version = Tags.VERSION, acceptedMinecraftVersions = "[1.7.10]")
+@Mod(
+    modid = RainyDay.MODID,
+    name = "RainyDay",
+    version = Tags.VERSION,
+    acceptedMinecraftVersions = "[1.7.10]",
+    dependencies = "after:gregtech")
 public class RainyDay {
 
     public static final String MODID = "rainyday";
@@ -54,21 +57,13 @@ public class RainyDay {
             .register(new Network.PlayerSync());
         proxy.init(); // players' games: rain sound swapping
 
-        // Weather TV: iron casing, glass pane screen, redstone underneath.
-        //   I I I
-        //   I P I
-        //   I R I
-        GameRegistry.addShapedRecipe(
-            new ItemStack(weatherTV),
-            "III",
-            "IPI",
-            "IRI",
-            'I',
-            Items.iron_ingot,
-            'P',
-            Blocks.glass_pane,
-            'R',
-            Items.redstone);
         for (RainProfile p : Config.profiles) LOG.info("Rain profile: {}", p);
+    }
+
+    @Mod.EventHandler
+    public void postInit(FMLPostInitializationEvent event) {
+        // Weather TV recipe: the GregTech one if GT5u is installed, otherwise the vanilla one. Done in postInit so
+        // every mod's items and ore dictionary names exist by now.
+        Recipes.register();
     }
 }
