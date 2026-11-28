@@ -20,6 +20,19 @@ public class Config {
     /** Ambient sounds are multiplied by this when the player is under a roof. */
     public static float indoorSoundVolume = 0.4f;
 
+    // HUD weather icon (players' own setting, saved by the in-game placement screen).
+    public static final String[] HUD_ANCHORS = { "top_left", "top_right", "bottom_left", "bottom_right" };
+    /** Corner the offsets are measured from: the corner nearest the icon when it was last placed. */
+    public static String hudAnchor = "top_left";
+    /** Distance from that corner to the icon's nearest edges, in GUI pixels. */
+    public static int hudX = 4, hudY = 4;
+    /** Icon size: 1.0 = 16 GUI pixels (about an item icon). */
+    public static float hudScale = 1.0f;
+    public static final float HUD_SCALE_MIN = 0.5f, HUD_SCALE_MAX = 4.0f;
+
+    /** Kept so the placement screen can save while the game runs. */
+    private static Configuration config;
+
     /** In chain order: the order of the 'profiles' list. */
     public static List<RainProfile> profiles = new ArrayList<>();
 
@@ -86,6 +99,7 @@ public class Config {
 
     public static void load(File file) {
         Configuration cfg = new Configuration(file);
+        config = cfg;
         cfg.addCustomCategoryComment(
             "general",
             "RainyDay keeps it raining and moves through the rain profiles listed below as a chain, in the order of\n"
@@ -214,7 +228,52 @@ public class Config {
             profiles.add(new RainProfile("steady", 1f, 1f, 0f, 0f, 10f, 40f, null, RainSound.VANILLA));
         }
 
+        loadHud(cfg);
+
         if (cfg.hasChanged()) cfg.save();
+    }
+
+    private static void loadHud(Configuration cfg) {
+        cfg.addCustomCategoryComment(
+            "hud",
+            "Weather icon on your screen (only for players who have RainyDay installed). Easiest to change in game: "
+                + "press the RainyDay HUD key (default H) and drag the icon; use the mouse wheel to resize it.");
+        hudAnchor = cfg.getString(
+            "anchor",
+            "hud",
+            hudAnchor,
+            "Corner the offsets are measured from: top_left, top_right, bottom_left or bottom_right.",
+            HUD_ANCHORS);
+        boolean known = false;
+        for (String a : HUD_ANCHORS) known |= a.equals(hudAnchor);
+        if (!known) hudAnchor = "top_left";
+        hudX = cfg.getInt("offsetX", "hud", hudX, 0, 10000, "Distance from that corner, sideways, in GUI pixels.");
+        hudY = cfg.getInt("offsetY", "hud", hudY, 0, 10000, "Distance from that corner, up or down, in GUI pixels.");
+        hudScale = cfg.getFloat(
+            "scale",
+            "hud",
+            hudScale,
+            HUD_SCALE_MIN,
+            HUD_SCALE_MAX,
+            "Icon size. 1.0 = 16 GUI pixels; 0.5 to 4.0.");
+    }
+
+    /** Saves the HUD icon position and size (called by the placement screen). */
+    public static void saveHud() {
+        if (config == null) return;
+        config.getCategory("hud")
+            .get("anchor")
+            .set(hudAnchor);
+        config.getCategory("hud")
+            .get("offsetX")
+            .set(hudX);
+        config.getCategory("hud")
+            .get("offsetY")
+            .set(hudY);
+        config.getCategory("hud")
+            .get("scale")
+            .set(hudScale);
+        config.save();
     }
 
     private static AmbientSound loadSound(Configuration cfg, String cat, RainProfile d) {
