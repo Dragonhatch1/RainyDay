@@ -25,6 +25,10 @@ import cpw.mods.fml.relauncher.Side;
  * Profiles form a chain in the order of the config's 'profiles' list (drizzle -> steady -> heavy -> storm).
  * When one ends it stays, goes back one or goes forward one (Config.chanceBack/Stay/Forward). The first
  * profile can't go back (that share goes forward); the last one wraps forward to the first.
+ *
+ * The chain is planned one step ahead: whenever a profile starts, the following profile and its length are
+ * rolled right away and saved (WeatherState.nextProfile / nextTicks), so the Weather TV can forecast it.
+ * When the current profile ends, that planned profile is the one that starts.
  */
 public class WeatherHandler {
 
@@ -61,18 +65,27 @@ public class WeatherHandler {
         if (profile == null) {
             // New world, or the saved profile was removed from the config: start at the bottom of the chain.
             profile = Config.profiles.get(0);
-            startProfile(world, state, profile, "start of chain");
+            startProfile(world, state, profile, 0, "start of chain");
         } else if (state.rain <= 0.2f) {
             // Saved by an older version without rolled strengths: roll the same profile again.
-            startProfile(world, state, profile, "re-rolled (old save)");
+            startProfile(world, state, profile, 0, "re-rolled (old save)");
         } else if ((reset && !sleptThrough) || --state.ticksLeft <= 0) {
-            // Profile ran out, or /weather clear: take one step along the chain. Sleeping changes nothing.
-            int from = Config.profiles.indexOf(profile);
-            int to = nextIndex(from);
+            // Profile ran out, or /weather clear: start the planned next profile. Sleeping changes nothing.
+            RainProfile planned = Config.byName(state.nextProfile);
+            int duration = state.nextTicks;
+            if (planned == null || duration <= 0) {
+                // Nothing planned (older save) or the planned profile was removed from the config: step now.
+                planned = Config.profiles.get(nextIndex(Config.profiles.indexOf(profile)));
+                duration = 0;
+            }
+            int from = Config.profiles.indexOf(profile), to = Config.profiles.indexOf(planned);
             String why = to == from ? "stayed on " + profile.name
                 : (isForward(from, to) ? "forward from " : "back from ") + profile.name;
-            profile = Config.profiles.get(to);
-            startProfile(world, state, profile, (reset ? "/weather clear, " : "") + why);
+            profile = planned;
+            startProfile(world, state, profile, duration, (reset ? "/weather clear, " : "") + why);
+        } else if (Config.byName(state.nextProfile) == null || state.nextTicks <= 0) {
+            // Older save without a plan, or the planned profile was removed from the config: plan it now.
+            planNext(state, profile);
         }
         state.markDirty();
 
@@ -82,23 +95,30 @@ public class WeatherHandler {
         sounds.tick(world, profile.sound);
     }
 
-    private void startProfile(World world, WeatherState state, RainProfile profile, String why) {
+    /**
+     * Starts a profile: rolls its strengths, uses the planned duration (or rolls one if 'duration' is 0), then
+     * plans the profile after it.
+     */
+    private void startProfile(World world, WeatherState state, RainProfile profile, int duration, String why) {
         state.profile = profile.name;
         state.rain = profile.rollRain(rand);
         state.thunder = profile.rollThunder(rand);
-        state.ticksLeft = profile.rollDurationTicks(rand);
+        state.ticksLeft = duration > 0 ? duration : profile.rollDurationTicks(rand);
+        planNext(state, profile);
         sounds.reset();
         Network.sendProfileToDimension(world.provider.dimensionId, profile); // per-profile rain sounds
 
         if (Config.debug) {
             RainyDay.LOG.info(
-                "Starting {} (rain {}, thunder {}, for {} min) in dimension {} [{}]",
+                "Starting {} (rain {}, thunder {}, for {} min) in dimension {} [{}], next: {} for {} min",
                 profile.name,
                 String.format("%.2f", state.rain),
                 String.format("%.2f", state.thunder),
                 String.format("%.1f", state.ticksLeft / 1200f),
                 world.provider.dimensionId,
-                why);
+                why,
+                state.nextProfile,
+                String.format("%.1f", state.nextTicks / 1200f));
         }
     }
 
@@ -107,6 +127,13 @@ public class WeatherHandler {
         if (target >= 1f) return true; // pinned at max, vanilla clamps it there
         if (target <= 0f) return false; // pinned at 0
         return current < target; // in between: settles within 0.01 of the target
+    }
+
+    /** Rolls the profile that will follow 'current' (back / stay / forward) and how long it will last. */
+    private void planNext(WeatherState state, RainProfile current) {
+        RainProfile next = Config.profiles.get(nextIndex(Config.profiles.indexOf(current)));
+        state.nextProfile = next.name;
+        state.nextTicks = next.rollDurationTicks(rand);
     }
 
     /**
